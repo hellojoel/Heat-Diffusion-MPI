@@ -23,9 +23,10 @@ mpirun -np 4 ./jacobi2d 64x64-heatmap.csv 100 64 64
 This runs the simulation on a `64x64` grid for `100` iterations using 4 processes.
 
 ## Example
-- Initial temperature distribution
-- Final temperature distribution
-- Speedup analysis
+- Initial temperature distribution </br>
+  ![alt text](https://github.com/hellojoel/Heat-Diffusion-MPI/blob/main/initial_heatmap.png?raw=true)
+- Final temperature distribution (10000 iterations) </br>
+  ![alt text](https://github.com/hellojoel/Heat-Diffusion-MPI/blob/main/final_heatmap.png?raw=true)
 
 ## Future Improvements
 - **Parallel I/O calls** and **MPI Cartesian Topologies** for optimized efficiency.
