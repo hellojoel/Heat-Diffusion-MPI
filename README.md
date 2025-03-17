@@ -33,4 +33,6 @@ This runs the simulation on a `64x64` grid for `100` iterations using 4 processe
 - Support for **adaptive mesh refinement**.
 - Extend to **3D heat diffusion simulations**.
 
-
+## References
+- OpenMPI Documentation: https://www.open-mpi.org/doc/
+- Iterative Stencil Loops
