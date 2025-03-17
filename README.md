@@ -10,6 +10,8 @@ This project implements a parallel computing model to simulate heat diffusion us
 - **Performance optimization using domain decomposition**.
 
 ## Usage
+Run `Makefile` for compilation of the program.
+
 Run the program with a specified number of processes:
 ```sh
 mpirun -np <# of processes> ./jacobi2d <input filename> <# of timesteps> <size_X> <size_Y>
