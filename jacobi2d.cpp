@@ -10,20 +10,20 @@
 using namespace std;
 
 
-void args_parse(int argc, char* argv[], string* infname, int* timesteps, int* size_X, int* size_Y);
-void get_grid_size(int size_X, int size_Y, int world_size, int* gridsize_x, int* gridsize_y);
-void mem_init(int gridsize_x, int gridsize_y, double* heatmap[]);
-void read_csv(string infname, int size_X, int rank_id, int gridsize_x, int gridsize_y, double* heatmap[]);
-void pass_intervalues(int rank_id, int world_size, int size_X, int size_Y, int gridsize_x, int gridsize_y, double* heatmap[]);
-void jacobi_step(int gridsize_x, int gridsize_y, double* heatmap[]);
-string get_output_name(int world_size, int size_X, int size_Y);
-void write_csv(int world_size, int size_X, int size_Y, int gridsize_x, int gridsize_y, double* heatmap[]);
-void mem_clean(double* heatmap[]);
-double min_time(double arr[], int size);
-double avg_time(double arr[], int size);
-double max_time(double arr[], int size);
-void print_time(double min_time, double avg_time, double max_time);
-void fill_finalmap(int gridsize_x, int gridsize_y, double* heatmap[], double* finalmap[]);
+void argsParse(int argc, char* argv[], string* infname, int* timesteps, int* size_X, int* size_Y);
+void getGridSize(int size_X, int size_Y, int world_size, int* gridsize_x, int* gridsize_y);
+void memInit(int gridsize_x, int gridsize_y, double* heatmap[]);
+void readCsv(string infname, int size_X, int rank_id, int gridsize_x, int gridsize_y, double* heatmap[]);
+void passIntervalues(int rank_id, int world_size, int size_X, int size_Y, int gridsize_x, int gridsize_y, double* heatmap[]);
+void jacobiStep(int gridsize_x, int gridsize_y, double* heatmap[]);
+string getOutputName(int world_size, int size_X, int size_Y);
+void writeCsv(int world_size, int size_X, int size_Y, int gridsize_x, int gridsize_y, double* heatmap[]);
+void memClean(double* heatmap[]);
+double getMinTime(double arr[], int size);
+double getAvgTime(double arr[], int size);
+double getMaxTime(double arr[], int size);
+void printTime(double min_time, double avg_time, double max_time);
+void fillFinalmap(int gridsize_x, int gridsize_y, double* heatmap[], double* finalmap[]);
 
 
 int main(int argc, char* argv[]) {
@@ -43,21 +43,21 @@ int main(int argc, char* argv[]) {
     double* finalmap = nullptr;
     double* aggrmap = nullptr;
     
-    args_parse(argc, argv, &infname, &timesteps, &size_X, &size_Y);
+    argsParse(argc, argv, &infname, &timesteps, &size_X, &size_Y);
 
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank_id);
 
-    get_grid_size(size_X, size_Y, world_size, &gridsize_x, &gridsize_y);
+    getGridSize(size_X, size_Y, world_size, &gridsize_x, &gridsize_y);
 
-    mem_init(gridsize_x+2, gridsize_y+2, &heatmap);
-    read_csv(infname, size_X, rank_id, gridsize_x, gridsize_y, &heatmap);
+    memInit(gridsize_x+2, gridsize_y+2, &heatmap);
+    readCsv(infname, size_X, rank_id, gridsize_x, gridsize_y, &heatmap);
     
     wtime = MPI_Wtime();
     
     for (int t=0; t<timesteps; t++) {
-        pass_intervalues(rank_id, world_size, size_X, size_Y, gridsize_x, gridsize_y, &heatmap);
-        jacobi_step(gridsize_x, gridsize_y, &heatmap);
+        passIntervalues(rank_id, world_size, size_X, size_Y, gridsize_x, gridsize_y, &heatmap);
+        jacobiStep(gridsize_x, gridsize_y, &heatmap);
     }
     
     wtime = MPI_Wtime() - wtime;
@@ -67,30 +67,30 @@ int main(int argc, char* argv[]) {
     }
     MPI_Gather(&wtime, 1, MPI_DOUBLE, timebuf, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     if (rank_id == 0) {
-        print_time(min_time(timebuf, world_size), avg_time(timebuf, world_size), max_time(timebuf, world_size));
+        printTime(getMinTime(timebuf, world_size), getAvgTime(timebuf, world_size), getMaxTime(timebuf, world_size));
         delete[] timebuf;
     }
     
-    mem_init(gridsize_x, gridsize_y, &finalmap);
-    fill_finalmap(gridsize_x, gridsize_y, &heatmap, &finalmap);
+    memInit(gridsize_x, gridsize_y, &finalmap);
+    fillFinalmap(gridsize_x, gridsize_y, &heatmap, &finalmap);
     if (rank_id == 0) {
         aggrmap = new double[size_X*size_Y];
     }
     MPI_Gather(finalmap, gridsize_x*gridsize_y, MPI_DOUBLE, aggrmap, gridsize_x*gridsize_y, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     if (rank_id == 0) {
-        write_csv(world_size, size_X, size_Y, gridsize_x, gridsize_y, &aggrmap);
+        writeCsv(world_size, size_X, size_Y, gridsize_x, gridsize_y, &aggrmap);
         delete[] aggrmap;
     }
     
-    mem_clean(&heatmap);
-    mem_clean(&finalmap);
+    memClean(&heatmap);
+    memClean(&finalmap);
     MPI_Finalize();
 
     return 0;
 }
 
 
-void args_parse(int argc, char* argv[], string* infname, int* timesteps, int* size_X, int* size_Y) {
+void argsParse(int argc, char* argv[], string* infname, int* timesteps, int* size_X, int* size_Y) {
     *infname = argv[argc-4];
     *timesteps = stoi(argv[argc-3]);
     *size_X = stoi(argv[argc-2]);
@@ -99,7 +99,7 @@ void args_parse(int argc, char* argv[], string* infname, int* timesteps, int* si
 }
 
 
-void get_grid_size(int size_X, int size_Y, int world_size, int* gridsize_x, int* gridsize_y) {
+void getGridSize(int size_X, int size_Y, int world_size, int* gridsize_x, int* gridsize_y) {
     int numblocks_x = 1;
     int numblocks_y = 1;
     int i = 0;
@@ -115,7 +115,7 @@ void get_grid_size(int size_X, int size_Y, int world_size, int* gridsize_x, int*
 }
 
 
-void mem_init(int gridsize_x, int gridsize_y, double* heatmap[]) {
+void memInit(int gridsize_x, int gridsize_y, double* heatmap[]) {
     *heatmap = new double[(gridsize_x*gridsize_y)];
 
     for (int i = 0; i < gridsize_y; i++) {
@@ -128,7 +128,7 @@ void mem_init(int gridsize_x, int gridsize_y, double* heatmap[]) {
 }
 
 
-void read_csv(string infname, int size_X, int rank_id, int gridsize_x, int gridsize_y, double* heatmap[]) {
+void readCsv(string infname, int size_X, int rank_id, int gridsize_x, int gridsize_y, double* heatmap[]) {
     ifstream file(infname);
     string line;
     int blocks_X = size_X / gridsize_x;
@@ -166,7 +166,7 @@ void read_csv(string infname, int size_X, int rank_id, int gridsize_x, int grids
 }
 
 
-double min_time(double arr[], int size) {
+double getMinTime(double arr[], int size) {
     double min_val = arr[0];
     for (int i = 1; i < size; i++) {
         min_val = (min_val < arr[i]) ? min_val : arr[i];
@@ -175,7 +175,7 @@ double min_time(double arr[], int size) {
 }
 
 
-double avg_time(double arr[], int size) {
+double getAvgTime(double arr[], int size) {
     double sum = 0.0;
     for (int i = 0; i < size; i++) {
         sum += arr[i];
@@ -183,7 +183,7 @@ double avg_time(double arr[], int size) {
     return sum / (double)size;
 }
 
-double max_time(double arr[], int size) {
+double getMaxTime(double arr[], int size) {
     double max_val = arr[0];
     for (int i = 1; i < size; i++) {
         max_val = (max_val > arr[i]) ? max_val : arr[i];
@@ -192,22 +192,22 @@ double max_time(double arr[], int size) {
 }
 
 
-void print_time(double min_time, double avg_time, double max_time) {
+void printTime(double min_time, double avg_time, double max_time) {
     cout << "TIME: Min: " << fixed << setprecision(3) << min_time << " s Avg: " << fixed << setprecision(3) << avg_time << " s Max: " << fixed << setprecision(3) << max_time << " s" << endl;
     return;
 }
 
 
-string get_output_name(int world_size, int size_X, int size_Y) {
+string getOutputName(int world_size, int size_X, int size_Y) {
     string fname = to_string(size_X) + "x" + to_string(size_Y) + "." + to_string(world_size) + "-output.csv";
     return fname;
 }
 
 
-void write_csv(int world_size, int size_X, int size_Y, int gridsize_x, int gridsize_y, double* heatmap[]) {
+void writeCsv(int world_size, int size_X, int size_Y, int gridsize_x, int gridsize_y, double* heatmap[]) {
     int blocks_X = size_X / gridsize_x;
     int blocks_Y = size_Y / gridsize_y;
-    string outfname = get_output_name(world_size, size_X, size_Y);
+    string outfname = getOutputName(world_size, size_X, size_Y);
     ofstream file(outfname);
 
     if (!file.is_open()) {
@@ -235,13 +235,13 @@ void write_csv(int world_size, int size_X, int size_Y, int gridsize_x, int grids
 }
 
 
-void mem_clean(double* heatmap[]) {
+void memClean(double* heatmap[]) {
     delete[] *heatmap;
     return;
 }
 
 
-void pass_intervalues(int rank_id, int world_size, int size_X, int size_Y, int gridsize_x, int gridsize_y, double* heatmap[]) {
+void passIntervalues(int rank_id, int world_size, int size_X, int size_Y, int gridsize_x, int gridsize_y, double* heatmap[]) {
     double topsend[gridsize_x];
     double bottomsend[gridsize_x];
     double leftsend[gridsize_y];
@@ -298,12 +298,12 @@ void pass_intervalues(int rank_id, int world_size, int size_X, int size_Y, int g
 }
 
 
-void jacobi_step(int gridsize_x, int gridsize_y, double* heatmap[]) {
+void jacobiStep(int gridsize_x, int gridsize_y, double* heatmap[]) {
     double* new_heatmap;
     int padded_x = gridsize_x + 2;
     int padded_y = gridsize_y + 2;
 
-    mem_init(padded_x, padded_y, &new_heatmap);
+    memInit(padded_x, padded_y, &new_heatmap);
 
     for (int i=1; i<gridsize_y+1; i++) {
         for (int j=1; j<gridsize_x+1; j++) {
@@ -326,11 +326,11 @@ void jacobi_step(int gridsize_x, int gridsize_y, double* heatmap[]) {
         }
     }
 
-    mem_clean(&new_heatmap);
+    memClean(&new_heatmap);
     return;
 }
 
-void fill_finalmap(int gridsize_x, int gridsize_y, double* heatmap[], double* finalmap[]) {
+void fillFinalmap(int gridsize_x, int gridsize_y, double* heatmap[], double* finalmap[]) {
     for (int i=0; i<gridsize_y; i++) {
         for (int j=0; j<gridsize_x; j++) {
             (*finalmap)[i*gridsize_x+j] = (*heatmap)[(i+1)*(gridsize_x+2)+j+1];
